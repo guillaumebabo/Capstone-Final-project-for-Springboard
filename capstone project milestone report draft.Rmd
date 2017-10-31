@@ -1,0 +1,40 @@
+---
+title: "Capstone project milestone report draft"
+output: html_notebook
+
+Part backorders is a common supply chain problem. The main goal in this project is to identify parts at risk of backorder before the event occurs so the business has time to react. 
+Training data file contains the historical data for the 8 weeks prior to the week we are trying to predict. The data was taken as weekly snapshots at the start of each week. Since my target is to predict how many parts could possibly go on backorder, I chose to combine my dataset. I merged my training data and my test data to run some statistical analysis and have a better insight from the dataset. Before anything I had to do some data wrangling and cleaning. 
+
+Data cleaning and wrangling
+
+My first action was to check the dataset and make sure it was on a tidy format. I looked at the columns names and checked if I could make them simpler, shorter and more descriptive. Fortunately, the columns names were descriptive enough.
+The 2nd step was to seek Nan values within the dataset. After finding out Nan values, I had to decide what to do with them.
+Therefore, the following step was to replace the Nan values by numerical values.  Looking at the data, I realized -99 had previously been chosen to replace some missing values. I decided to stick with the same format and changed the Nan values to -99. After further investigations, I noticed there was 7 columns filled with either Yes or No. I had to replace the character values with numerical values. I decided to create dummy variables by changing No/Yes to 0/1.
+
+Data visualization
+ I made a pie chart to count how many parts went on backorder or did not.
+Yes: 1676567 or 99.7%
+NO: 11293 or 0.7%
+From this result, I can tell that the dataset is imbalanced. 
+Imbalanced classification is a supervised learning problem where one class outnumbers other class by a large proportion. This problem is faced more frequently in binary classification problems than multi-level classification.
+
+Analysis
+
+With imbalanced data sets, an algorithm doesn’t get the necessary information about the minority class (in our case 0.7%) to make an accurate prediction. Using ML algorithms with this unbalanced dataset would probably lead to a biased and inaccurate prediction.  The methods to deal with this type of datasets are widely known as ‘Sampling Methods’. Generally, these methods aim to modify an imbalanced data into balanced distribution using some mechanism. The modification occurs by changing the size of original data set and provides the same proportion of balance.
+
+Method
+SMOTE: Synthetic Minority Over-sampling Technique
+
+A subset of data is taken from the minority class as an example and then new synthetic similar instances are created. These synthetic instances are then added to the original dataset. The new dataset is used as a sample to train the classification models.
+This technique helps avoid overfitting that occurs when exact replicas of minority instances are added to the main dataset. 
+I will apply this technique to my dataset to balance it.
+
+Algorithm: Trees
+
+At this point I am still working on the type of regression trees that would work the best with my dataset.
+
+
+ 
+
+
+
