@@ -1,0 +1,38 @@
+---
+title: 'Apply Machine Learning to my capstone project: Product Backorder'
+author: "Guillaume Babo"
+date: "11/20/2017"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+The goal is to predict part at risk of backorder before the event occurs.  This problem is a supervised problem where we are using the input (x) to predict an output (Y). In this case, the output variable is a category so it is a classification problem.
+
+#Main features
+The independent variables used to predict the output “went on backorder” are: 
+national_inv - Current inventory level for the part
+lead_time - Transit time for product (if available)
+in_transit_qty - Amount of product in transit from source
+forecast_3_month - Forecast sales for the next 3 months
+forecast_6_month - Forecast sales for the next 6 months
+forecast_9_month - Forecast sales for the next 9 months
+sales_1_month - Sales quantity for the prior 1 month time period
+sales_3_month - Sales quantity for the prior 3 month time period
+sales_6_month - Sales quantity for the prior 6 month time period
+sales_9_month - Sales quantity for the prior 9 month time period
+min_bank - Minimum recommend amount to stock
+potential_issue - Source issue for part identified
+pieces_past_due - Parts overdue from source
+perf_6_month_avg - Source performance for prior 6 month period
+perf_12_month_avg - Source performance for prior 12 month period
+local_bo_qty - Amount of stock orders overdue
+deck_risk - Part risk flag
+oe_constraint - Part risk flag
+ppap_risk - Part risk flag
+stop_auto_buy - Part risk flag
+rev_stop - Part risk flag
+
+#Model
+The random forest model seems to be the most appropriate in this case. The evaluation of the success of the model will be done by computing the accuracy of the model and the AUC (area under the curve of ROC curve).
+
