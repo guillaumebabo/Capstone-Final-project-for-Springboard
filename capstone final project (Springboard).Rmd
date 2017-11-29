@@ -1,0 +1,248 @@
+---
+title: "R Notebook"
+output:
+  html_notebook: default
+  pdf_document: default
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+#load my packages
+```{r}
+library(devtools)
+library(dplyr)
+library(tidyr)
+library(readr)
+library(ggplot2)
+library(unbalanced)
+library(tibble)
+library(mlr)
+library(ROCR)
+library(rpart)
+library(rpart.plot)
+Kaggle_Training_Dataset_v2 <- read_csv("~/Documents/predict-bo-trial/Kaggle_Training_Dataset_v2.csv")
+Kaggle_Test_Dataset_v2 <- read_csv("~/Documents/predict-bo-trial/Kaggle_Test_Dataset_v2.csv")
+
+```
+#Load data file and determine the number of rows in the training and test data
+```{r}
+Training <- Kaggle_Training_Dataset_v2    
+Test_data <-Kaggle_Test_Dataset_v2
+nrow(Kaggle_Training_Dataset_v2)
+nrow(Kaggle_Test_Dataset_v2)
+```
+#Combine training an test data
+```{r}
+Data <- rbind(Training,Test_data)
+```
+
+#seeking NA values (Let's see if there are missing values within the dataset)
+```{r}
+any(is.na(Training))
+
+```
+#Let's replace the missing values by -99
+```{r}
+Data[is.na(Data)] <- -99
+```
+#Creating dummy variables : replacing 'No/Yes' to 0/1
+```{r}
+Data$potential_issue<-ifelse(Data$potential_issue=='Yes', 1,0)
+Data$went_on_backorder<-ifelse(Data$went_on_backorder=='Yes', 1,0)
+Data$deck_risk<-ifelse(Data$deck_risk=='Yes', 1,0)
+Data$oe_constraint<-ifelse(Data$oe_constraint=='Yes', 1,0)
+Data$ppap_risk<-ifelse(Data$ppap_risk=='Yes', 1,0)
+Data$stop_auto_buy<-ifelse(Data$stop_auto_buy=='Yes', 1,0)
+Data$rev_stop<-ifelse(Data$rev_stop=='Yes', 1,0)
+
+```
+#view cleaned data
+```{r}
+str(Data)
+
+```
+#Count : how many parts went on backorders
+```{r}
+table(Data['went_on_backorder'])
+
+```
+#Create a Bar Chart
+## Create data for the graph
+```{r}
+x <-  c(1676568,11293)
+     barplot(x,width = 1, main= "Bar Chart", ylab= "Went on Backorder",names.arg= c("No","Yes"),col="blue")
+```
+# Create Box plot
+```{r}
+boxplot(Data$lead_time,Data$went_on_backorder, ylim= c(0,60), ylab= "Lead Time", main= "Boxplot")
+    boxplot(Data$forecast_3_month,Data$went_on_backorder, ylab= "forecast_3_month", main= "Boxplot")
+    boxplot(Data$forecast_6_month,Data$went_on_backorder, ylab= "forecast_6_month", main= "Boxplot")
+    boxplot(Data$forecast_9_month,Data$went_on_backorder, ylab= "forecast_9_month", main= "Boxplot")
+    
+```
+# split the data to training and test
+```{r}
+training_split <- Data[c(1:1687861),c(1:23)]
+    test_split <- Data[c(1687862:1929937), c(1:23)]
+    View(training_split)
+```
+# Use SMOTE sampling to balance the dataset
+```{r}
+training_split$went_on_backorder <- as.factor(training_split$went_on_backorder)
+    input  <- training_split %>% select(-went_on_backorder)
+    output <- training_split$went_on_backorder 
+    training_balanced <- ubSMOTE (input,output,  perc.over = 200, perc.under = 200, k = 5)
+```
+# Recombine the synthetic balanced data
+```{r}
+    training_df <- bind_cols(as.tibble(training_balanced$X), tibble(went_on_backorder = training_balanced$Y))
+
+```
+# count new dataset after applying SMOTE
+```{r}
+View(training_df)
+    table(training_df['went_on_backorder'])
+    Y <- c(45172,33879 )
+    percent<- round(100*Y/sum(Y), 1)
+    percent
+```
+# Barplot to vizualize dataset after applying SMOTE
+```{r}
+   barplot(Y,width = 1, main= "Bar Chart", ylab= "Went on Backorder",names.arg= c("No","Yes"),col="red")
+
+```
+# LOGISTIC REGRESSION MODEL
+```{r}
+logistic_regression= glm(went_on_backorder~lead_time+national_inv+forecast_6_month+forecast_3_month+forecast_9_month+
+                              sales_1_month+sales_3_month+sales_6_month+sales_9_month+min_bank +
+                              local_bo_qty+perf_12_month_avg+potential_issue+deck_risk+oe_constraint
+                            +stop_auto_buy, data=training_df, family= binomial)
+   summary(logistic_regression)
+```
+# predict outcome on test data
+```{r}
+predict_test <- predict(logistic_regression, newdata=test_split, type= "response")
+   summary(predict_test)
+   tapply(predict_test,test_split$went_on_backorder, mean)
+```
+#ROC curve to find accurate threshold
+```{r}
+ROCR_pred= prediction(predict_test,test_split$went_on_backorder)
+ROCR_perf= performance(ROCR_pred, "tpr","fpr")
+plot(ROCR_perf,colorize=TRUE,print.cutoffs.at=seq(0,1,0.1),text.adj=c(-0.2,1,7))
+
+```
+#Confusion matrix
+```{r}
+table(test_split$went_on_backorder,predict_test>0.47)
+   
+```
+#Accuracy
+```{r}
+(17405+2598)/(17405+2598+221983+90)
+```
+
+
+#AUC
+
+```{r}
+  as.numeric(performance(ROCR_pred, "auc")@y.values)
+```
+
+
+# CART : REGRESSION TREE MODEL
+```{r}
+ tree_model= rpart(went_on_backorder~lead_time+national_inv+forecast_6_month+forecast_3_month+forecast_9_month+
+                       sales_1_month+sales_3_month+sales_6_month+sales_9_month+min_bank +
+                       local_bo_qty+perf_12_month_avg+potential_issue+deck_risk+oe_constraint
+                     +stop_auto_buy, data= training_df, method = "class", control = rpart.control(minbucket = 25))
+   prp(tree_model)
+```
+##prediction
+```{r}
+ predictCART = predict(tree_model,newdata=test_split, type= "class" )
+   table(test_split$went_on_backorder,predictCART )
+   
+```
+#Accuracy (CART model)
+```{r}
+(218367+1817)/(218367+1817+21021+871)
+```
+
+
+##ROC curve (CART model)
+
+```{r}
+ROCRCart_pred=predict(tree_model, newdata= test_split)
+predict_ROC=predict(tree_model, newdata= test_split)
+ROCRCart_pred=prediction(predict_ROC[,2],test_split$went_on_backorder)
+ROCRCart_perf= performance(ROCRCart_pred, "tpr","fpr")
+plot(ROCRCart_perf,colorize=TRUE,print.cutoffs.at=seq(0,1,0.2),text.adj=c(-0.2,1,7))
+```
+#AUC
+```{r}
+   as.numeric(performance(ROCRCart_pred, "auc")@y.values)
+```
+
+#RANDOM FOREST MODEL
+```{r}
+library(randomForest)
+   training_df$went_on_backorder= as.factor(training_df$went_on_backorder)
+   test_split$went_on_backorder= as.factor(test_split$went_on_backorder)
+   randomforest_model=randomForest(went_on_backorder~lead_time+national_inv+forecast_6_month+forecast_3_month+forecast_9_month+
+sales_1_month+sales_3_month+sales_6_month+sales_9_month+min_bank +local_bo_qty+perf_12_month_avg+potential_issue+deck_risk+oe_constraint+stop_auto_buy, data= training_df, nodesize= 25, ntree= 200)
+```
+##Prediction on test data (random forest model)
+```{r}
+predict_forest= predict(randomforest_model,newdata = test_split)
+   table(test_split$went_on_backorder,predict_forest)
+```
+## Cross Validation (random forest model)
+```{r}
+install.packages("caret")
+  library(caret)
+  install.packages("e1071")
+  library(e1071)
+  fitControl= trainControl(method="cv", number= 10)
+  cartGrid= expand.grid(.cp=(1:50)*0.01)
+  train(went_on_backorder~lead_time+national_inv+forecast_6_month+forecast_3_month+forecast_9_month+sales_1_month+sales_3_month+sales_6_month+sales_9_month+min_bank +local_bo_qty+perf_12_month_avg+potential_issue+deck_risk+oe_constraint+stop_auto_buy,data= training_df, method= "rpart", trControl=fitControl, tuneGrid=cartGrid)
+```
+#Cross Validation included
+```{r}
+randomforestCV_model= rpart(went_on_backorder~lead_time+national_inv+forecast_6_month+forecast_3_month+forecast_9_month+sales_1_month+sales_3_month+sales_6_month+sales_9_month+min_bank +local_bo_qty+perf_12_month_avg+potential_issue+deck_risk+oe_constraint+stop_auto_buy,data= training_df, method="class",control=rpart.control(cp = 0.01)) 
+```
+##Prediction 
+```{r}
+predictCV= predict(randomforestCV_model,newdata=test_split, type= "class")
+  table(test_split$went_on_backorder,predictCV)
+```
+#Accuracy(RandomForest model) 
+```{r}
+(216949+1862)/(216949+1862+826+22439)
+```
+#ROC curve (Random Forest model)
+```{r}
+predictRF_ROC=predict(tree_model, newdata= test_split)
+  ROCRRF_pred=prediction(predictRF_ROC[,2],test_split$went_on_backorder)
+  ROCRRF_perf= performance(ROCRRF_pred, "tpr","fpr")
+  plot(ROCRRF_perf,colorize=TRUE,print.cutoffs.at=seq(0,1,0.2),text.adj=c(-0.2,1,7))
+  
+```
+#AUC (Random Forest model)
+```{r}
+  as.numeric(performance(ROCRCart_pred, "auc")@y.values)
+
+```
+#Important variable plot
+```{r}
+library(randomForest)
+  varImpPlot(randomforest_model)
+```
+
+
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file).

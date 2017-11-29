@@ -1,0 +1,79 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+---
+title: "CAPSTONE FINAL PROJECT (Product Backorder)"
+author: "Guillaume Babo"
+date: "11/28/2017"
+output: html_document
+
+#Introduction
+Part backorders is a common supply chain problem. The main goal in this project is to identify parts at risk of backorder before the event occurs so the business has time to react. Training data file contains the historical data for the 8 weeks prior to the week we are trying to predict. The data was taken as weekly snapshots at the start of each week. Columns of the dataset are defined as follows
+sku - Random ID for the product
+national_inv - Current inventory level for the part
+lead_time - Transit time for product (if available)
+in_transit_qty - Amount of product in transit from source
+forecast_3_month - Forecast sales for the next 3 months
+forecast_6_month - Forecast sales for the next 6 months
+forecast_9_month - Forecast sales for the next 9 months
+sales_1_month - Sales quantity for the prior 1 month time period
+sales_3_month - Sales quantity for the prior 3 month time period
+sales_6_month - Sales quantity for the prior 6 month time period
+sales_9_month - Sales quantity for the prior 9 month time period
+min_bank - Minimum recommend amount to stock
+potential_issue - Source issue for part identified
+pieces_past_due - Parts overdue from source
+perf_6_month_avg - Source performance for prior 6 month period
+perf_12_month_avg - Source performance for prior 12 month period
+local_bo_qty - Amount of stock orders overdue
+deck_risk - Part risk flag
+oe_constraint - Part risk flag
+ppap_risk - Part risk flag
+stop_auto_buy - Part risk flag
+rev_stop - Part risk flag
+went_on_backorder - Product actually went on backorder. This is the target value.
+
+In the next paragraphs, I will discuss the approach used to solve the problem. I will talk in detail about the dataset provided, the machine learning methods used, the analysis drawn and the results and recommendations made.
+
+#Data 
+The dataset was already divided into training and test sets, so the plan was to combine them first before running the initial analysis and then split them again. The training dataset is used to build the model and the test dataset to run and test the model.  My first action was to check the dataset and make sure it was on a tidy format. I looked at the columns names and checked if I could make them simpler, shorter and more descriptive. Fortunately, the columns names were descriptive enough. The second step was to seek missing values within the dataset. 
+Looking at the data, I realized -99 had previously been chosen to replace some missing values. I decided to stick with the same format and changed the Nan values to -99. After further investigations, I realized that 7 columns were filled with either Yes or No. I had to replace the character values with numerical values. I decided to create dummy variables by changing No/Yes to 0/1. Numerical values would make the dataset easy to manipulate.
+Since my target is to predict how many parts could possibly go on backorder, using the training dataset, I made a bar chart to count how many parts went on backorder or did not.
+Yes: 1676567 or 99.7%
+NO: 11293 or 0.7%
+From this result, I can tell that the dataset is Imbalanced. 
+Imbalanced classification is a supervised learning problem where one class outnumbers other class by a large proportion. This problem is faced more frequently in binary classification problems than multi-level classification problems.
+
+#Analysis and methods
+With imbalanced data sets, an algorithm doesn’t get the necessary information about the minority class (in our case 0.7%) to make an accurate prediction. Using ML algorithms with this unbalanced dataset would probably lead to a biased and inaccurate prediction.  The methods to deal with this type of datasets are widely known as ‘Sampling Methods’. Generally, these methods aim to modify an imbalanced data into balanced distribution using some mechanism. The modification occurs by changing the size of original data set and provides the same proportion of balance.
+SMOTE: Synthetic Minority Over-sampling Technique
+A subset of data is taken from the minority class as an example and then new synthetic similar instances are created. These synthetic instances are then added to the original dataset. The new dataset is used as a sample to train the classification models.
+This technique helps avoid overfitting that occurs when exact replicas of minority instances are added to the main dataset. 
+I applied this technique to my dataset to balance it.
+
+#Results
+
+After applying SMOTE and balancing the dataset, I was ready to build the machine-learning model.  For practicing purposes, I decided to build three models; linear regression, regression tree and random forest. The evaluation of the success of the model will be done by computing the accuracy of the model and the AUC (area under the curve of ROC curve).
+
+ 
+Linear regression                       Cart Regression Tree                       Random Forest
+Accuracy:  82.63%                       Accuracy:  90.95%                          Accuracy: 90.38%             
+AUC: 50.55%                               AUC: 81.95%                                    AUC: 81.94%
+
+The accuracy and the AUC of the Regression Tree model are slightly higher than the random forest model, so this is our best model.
+
+#Recommendation
+Based on our regression tree model.
+1-) When the forecast sales for the next 3 months falls below 1, the part will most likely not go on backorder. As long as the forecast sales for the next 3 months is below 1, that part will be in stock.
+2-) If the forecast sales for 3 months is above 1 and the current inventory level for the part is equal or more than 33, the part will remain in stock.
+3-) If the forecast sales for 3 months is above 1, the current inventory level for the part is less than 33 and the sales quantity for the prior 1 month time period is more than 1, the part will go on backorder.  The company should avoid having these 3 conditions happening simultaneously; otherwise the part will go on backorder.
+4-) If the forecast sales for 3 months is above 1, the current inventory level for the part is between 2 and 33 and the sales quantity for the prior 1 month time period is less than 1, the part will most likely remain in stock.
+5-) Finally, if the forecast sales for 3 months is above 1, the current inventory level for the part is less than 2 and the sales quantity for the prior 1 month time period is less than 1, the part will go on backorder. As soon as these conditions are observed the company should restock to avoid a potential backorder.
+
+
+#Conclusion
+The recommendations to avoid a part backorder were based on our regression tree model, which is our best model with 90.95% accuracy.  The recommendations listed above will help the company predict a part backorder before it occurs so the company could take the appropriate action to avoid it.
+
+
